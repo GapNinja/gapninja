@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GapNinja - Trading Journal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --bg-color: #0d0c1d;
+            --primary-color: #00ff9d;
+            --secondary-color: #9f00ff;
+            --glass-bg: rgba(16, 18, 27, 0.7);
+            --border-color: rgba(0, 255, 157, 0.2);
+            --text-color: #e0e0e0;
+            --danger-color: #ff4d4d;
+            --shadow-color: rgba(0, 255, 157, 0.5);
+            --shadow-color-secondary: rgba(159, 0, 255, 0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            background-image:
+                linear-gradient(rgba(13, 12, 29, 0.95), rgba(13, 12, 29, 0.95)),
+                url('https://www.transparenttextures.com/patterns/cubes.png');
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        /* --- NEU: Login Container Styles --- */
+        #login-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: calc(100vh - 4rem);
+        }
+
+        #login-box {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        #login-error {
+            color: var(--danger-color);
+            margin-top: 1rem;
+            text-align: center;
+            height: 20px;
+            font-weight: 600;
+        }
+
+        /* Verstecke App-Container standardmäßig */
+        #app-container {
+            display: none;
+        }
+        /* --- ENDE --- */
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+
+        .title-header {
+            text-align: center;
+            grid-column: 1 / -1;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title-header h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--primary-color);
+            text-shadow: 0 0 15px var(--shadow-color), 0 0 25px var(--shadow-color);
+            flex-grow: 1; /* Titel zentrieren */
+            text-align: center;
+        }
+        
+        #logout-btn {
+            background: transparent;
+            color: var(--text-color);
+            border: 2px solid var(--danger-color);
+            padding: 0.7rem 1.5rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        #logout-btn:hover {
+            background: var(--danger-color);
+            color: white;
+            box-shadow: 0 0 10px var(--danger-color);
+        }
+
+        .card {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 1.5rem 2rem;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .checklist-item input[type="checkbox"] {
+            appearance: none; width: 20px; height: 20px; border: 2px solid var(--primary-color); border-radius: 4px;
+            margin-right: 12px; cursor: pointer; position: relative; transition: all 0.2s ease;
+        }
+
+        .checklist-item input[type="checkbox"]:checked { background-color: var(--primary-color); box-shadow: 0 0 10px var(--shadow-color); }
+
+        .checklist-item input[type="checkbox"]:checked::after {
+            content: '✓'; font-size: 16px; color: var(--bg-color);
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }
+
+        .rating-section { margin-top: 2rem; }
+
+        .rating-display {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 10px;
+        }
+
+        #punkte-display, #setup-rating-display { font-size: 2.5rem; font-weight: 700; }
+        
+        #setup-rating-display { transition: color 0.3s ease, text-shadow 0.3s ease; }
+
+        .rating-bar-container {
+            width: 100%; height: 20px; background-color: rgba(0,0,0,0.4);
+            border-radius: 10px; margin-top: 1rem; overflow: hidden; border: 1px solid var(--border-color);
+        }
+
+        #rating-bar { height: 100%; width: 0%; border-radius: 8px; transition: width 0.5s ease, background-color 0.5s ease; }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 0.8rem; background-color: rgba(0,0,0,0.3); border: 1px solid var(--border-color);
+            border-radius: 5px; color: var(--text-color); font-family: 'Rajdhani', sans-serif; font-size: 1rem;
+        }
+        
+        .form-group textarea { resize: vertical; min-height: 80px; }
+
+        /* Custom File Input */
+        input[type="file"] { color: transparent; }
+        input[type="file"]::-webkit-file-upload-button { visibility: hidden; }
+        input[type="file"]::before {
+            content: 'Datei auswählen'; display: inline-block; background: var(--glass-bg);
+            border: 1px solid var(--border-color); border-radius: 5px; padding: 0.7rem 1rem; outline: none;
+            white-space: nowrap; -webkit-user-select: none; cursor: pointer; font-weight: 600;
+            font-size: 1rem; color: var(--text-color); transition: all 0.2s ease;
+        }
+        input[type="file"]:hover::before { border-color: var(--primary-color); }
+        input[type="file"]:active::before { background-color: var(--primary-color); color: var(--bg-color); }
+
+        .btn {
+            width: 100%; padding: 1rem; font-size: 1.2rem; font-weight: 600; text-transform: uppercase;
+            color: var(--bg-color); background-color: var(--primary-color); border: none; border-radius: 5px;
+            cursor: pointer; transition: all 0.3s ease; box-shadow: 0 0 15px var(--shadow-color);
+        }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 0 25px var(--shadow-color), 0 0 35px var(--shadow-color); }
+        
+        #journal-entries { display: flex; flex-direction: column; gap: 1rem; min-height: 300px; }
+        
+        .journal-entry {
+            background: var(--glass-bg); border: 1px solid var(--border-color); border-left: 5px solid var(--primary-color);
+            border-radius: 8px; padding: 1.5rem; display: grid; grid-template-columns: 1.2fr 1.5fr 120px;
+            gap: 1.5rem; align-items: center; transition: all 0.3s ease;
+        }
+
+        .journal-entry.open { border-left-color: var(--secondary-color); }
+        .journal-entry:hover { border-color: var(--primary-color); transform: scale(1.02); }
+
+        .entry-details p { margin-bottom: 0.5rem; }
+        .entry-details strong { color: var(--primary-color); margin-right: 8px; }
+        .entry-notes p { overflow-wrap: break-word; word-break: break-word; }
+        .entry-rating { text-align: center; }
+        .entry-rating .grade { font-size: 3rem; font-weight: 700; }
+        .entry-rating .points { font-size: 1rem; opacity: 0.7; }
+        .entry-actions { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; justify-content: center; }
+
+        .btn-delete {
+            background: transparent; border: 1px solid var(--danger-color); color: var(--danger-color); padding: 0.5rem 1rem;
+            border-radius: 5px; cursor: pointer; transition: all 0.2s ease; width: 100%;
+        }
+        .btn-delete:hover { background: var(--danger-color); color: white; box-shadow: 0 0 10px var(--danger-color); }
+        
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(13, 12, 29, 0.85);
+            backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); display: flex; justify-content: center;
+            align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal-box {
+            background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 15px; padding: 2.5rem;
+            text-align: center; box-shadow: 0 0 30px var(--shadow-color-secondary); transform: scale(0.9); transition: transform 0.3s ease;
+        }
+        .modal-overlay.visible .modal-box { transform: scale(1); }
+        .modal-box p { font-size: 1.5rem; margin-bottom: 2rem; font-weight: 500; }
+        .modal-buttons { display: flex; gap: 1rem; justify-content: center; }
+        .modal-buttons button {
+            padding: 0.8rem 2rem; font-size: 1rem; font-weight: 600; border-radius: 5px; cursor: pointer;
+            transition: all 0.3s ease; border: 2px solid transparent; text-transform: uppercase;
+        }
+        #confirm-btn-yes { background-color: var(--danger-color); color: white; }
+        #confirm-btn-yes:hover { box-shadow: 0 0 15px var(--danger-color); transform: translateY(-2px); }
+        #confirm-btn-no { background-color: transparent; color: var(--text-color); border: 2px solid var(--border-color); }
+        #confirm-btn-no:hover { background-color: var(--primary-color); border-color: var(--primary-color); color: var(--bg-color); box-shadow: 0 0 15px var(--shadow-color); }
+
+        .stats-container {
+            display: flex; justify-content: space-around; text-align: center; gap: 1rem;
+            margin-bottom: 1.5rem; flex-wrap: wrap;
+        }
+        .stat-item h3 { font-size: 1.1rem; color: var(--primary-color); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 500; }
+        .stat-item p { font-size: 2.2rem; font-weight: 700; }
+        #open-trades-display { color: var(--secondary-color); }
+        #winrate-display { color: var(--primary-color); }
+
+        .outcome-tag { padding: 3px 8px; border-radius: 5px; color: var(--bg-color); font-weight: 700; text-transform: uppercase; font-size: 0.9rem; }
+        .outcome-tag.win { background-color: var(--primary-color); box-shadow: 0 0 8px var(--shadow-color); }
+        .outcome-tag.loss { background-color: var(--danger-color); box-shadow: 0 0 8px var(--danger-color); }
+        .entry-outcome-actions { display: flex; gap: 0.5rem; width: 100%; }
+        .btn-outcome { flex-grow: 1; padding: 0.5rem 0; border-radius: 5px; border: none; color: var(--bg-color); font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+        .btn-outcome.win { background-color: var(--primary-color); }
+        .btn-outcome.win:hover { box-shadow: 0 0 10px var(--shadow-color); }
+        .btn-outcome.loss { background-color: var(--danger-color); }
+        .btn-outcome.loss:hover { box-shadow: 0 0 10px var(--danger-color); }
+        
+        .pagination-container { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 2rem; }
+        .pagination-btn {
+            background: transparent; border: 1px solid var(--border-color); color: var(--text-color); font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem; font-weight: 600; width: 40px; height: 40px; border-radius: 5px; cursor: pointer; transition: all 0.2s ease;
+        }
+        .pagination-btn:hover { background-color: var(--primary-color); color: var(--bg-color); border-color: var(--primary-color); }
+        .pagination-btn.active { background-color: var(--primary-color); color: var(--bg-color); border-color: var(--primary-color); box-shadow: 0 0 10px var(--shadow-color); }
+        
+        .btn-view-image {
+            background-color: var(--secondary-color); color: white; border: none; border-radius: 4px; padding: 2px 8px;
+            cursor: pointer; font-weight: 600; transition: all 0.2s ease;
+        }
+        .btn-view-image:hover { box-shadow: 0 0 10px var(--shadow-color-secondary); }
+
+        #image-modal .modal-content { max-width: 90vw; max-height: 90vh; border-radius: 10px; border: 2px solid var(--primary-color); box-shadow: 0 0 40px var(--shadow-color); }
+        #image-modal .close-modal-btn { position: absolute; top: 20px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; transition: 0.3s; cursor: pointer; }
+        #image-modal .close-modal-btn:hover { color: var(--primary-color); text-shadow: 0 0 10px var(--shadow-color); }
+        
+        #chart-container { position: relative; margin: 2rem auto; height: 250px; width: 250px; }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <!-- NEU: Login Container -->
+    <div id="login-container">
+        <div class="card" id="login-box">
+            <h1 style="text-align:center; color: var(--primary-color); text-shadow: 0 0 15px var(--shadow-color);">⚔️ GapNinja - Login ⚔️</h1>
+            <form id="login-form" style="margin-top: 2rem;">
+                <div class="form-group">
+                    <label for="username">Benutzername</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Passwort</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn">Login</button>
+            </form>
+            <p id="login-error"></p>
+        </div>
+    </div>
+
+    <!-- Hauptanwendung (zuerst versteckt) -->
+    <div id="app-container">
+        <div class="container">
+            <header class="title-header">
+                <span style="width: 150px;"></span> <!-- Platzhalter für Zentrierung -->
+                <h1>⚔️ GapNinja ⚔️</h1>
+                <button id="logout-btn">Logout</button>
+            </header>
+
+            <aside class="left-panel">
+                <div class="card">
+                    <h2>IFVG Setup Rating</h2>
+                    <div id="rating-checklist">
+                        <div class="checklist-item"><input type="checkbox" id="chk1" name="chk1"><label for="chk1">...gibt es ein Bias in höherer Zeiteinheit?</label></div>
+                        <div class="checklist-item"><input type="checkbox" id="chk2" name="chk2"><label for="chk2">...wurde Liquidität gesweept?</label></div>
+                        <div class="checklist-item"><input type="checkbox" id="chk3" name="chk3"><label for="chk3">...rejecten wir von einer FVG?</label></div>
+                        <div class="checklist-item"><input type="checkbox" id="chk4" name="chk4"><label for="chk4">...gibt es ein SMT?</label></div>
+                        <div class="checklist-item"><input type="checkbox" id="chk5" name="chk5"><label for="chk5">...befinden wir uns im Premium o. Discount?</label></div>
+                        <div class="checklist-item"><input type="checkbox" id="chk6" name="chk6"><label for="chk6">...haben wir gutes Momentum?</label></div>
+                        <div class="checklist-item"><input type="checkbox" id="chk7" name="chk7"><label for="chk7">...gibt es einen klaren Target?</label></div>
+                    </div>
+                    <div class="rating-section">
+                        <div class="rating-display">
+                            <div><span style="font-size: 1.2rem; text-transform:uppercase;">Punkte:</span> <span id="punkte-display">0</span></div>
+                            <div><span style="font-size: 1.2rem; text-transform:uppercase;">Rating:</span> <span id="setup-rating-display">N/A</span></div>
+                        </div>
+                        <div class="rating-bar-container"><div id="rating-bar"></div></div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 2rem;">
+                    <h2>Neuer Journal-Eintrag</h2>
+                    <form id="journal-form">
+                        <div class="form-group"><label for="asset">Asset (z.B. EUR/USD)</label><input type="text" id="asset" required></div>
+                        <div class="form-group"><label for="direction">Richtung</label><select id="direction"><option value="Long">Long</option><option value="Short">Short</option></select></div>
+                        <div class="form-group"><label for="notes">Notizen / Setup-Beschreibung</label><textarea id="notes" rows="4"></textarea></div>
+                        <div class="form-group"><label for="image-upload">Chart-Bild hinzufügen</label><input type="file" id="image-upload" accept="image/*"></div>
+                        <button type="submit" class="btn">Eintrag Speichern</button>
+                    </form>
+                </div>
+            </aside>
+
+            <main class="main-panel">
+                <div class="card">
+                    <h2>Statistiken</h2>
+                    <div class="stats-container">
+                        <div class="stat-item"><h3>Abgeschlossen</h3><p id="total-trades-display">0</p></div>
+                        <div class="stat-item"><h3>Offen</h3><p id="open-trades-display">0</p></div>
+                        <div class="stat-item"><h3>Gewinner</h3><p id="win-trades-display">0</p></div>
+                        <div class="stat-item"><h3>Win-Rate</h3><p id="winrate-display">0.0%</p></div>
+                    </div>
+                    <div id="chart-container"><canvas id="stats-chart"></canvas></div>
+                    <hr style="border-color: var(--border-color); margin-bottom: 1.5rem; border-style: solid;">
+                    <h2>Trading Log</h2>
+                    <div id="journal-entries"></div>
+                    <div id="pagination-controls" class="pagination-container"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-box">
+            <p>Diesen Eintrag wirklich löschen?</p>
+            <div class="modal-buttons"><button id="confirm-btn-no">Abbrechen</button><button id="confirm-btn-yes">Löschen</button></div>
+        </div>
+    </div>
+    <div id="image-modal" class="modal-overlay">
+        <span class="close-modal-btn" id="close-image-modal">&times;</span>
+        <img class="modal-content" id="modal-image-content">
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- NEU: Login-System ---
+            const loginContainer = document.getElementById('login-container');
+            const appContainer = document.getElementById('app-container');
+            const loginForm = document.getElementById('login-form');
+            const loginError = document.getElementById('login-error');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            // Feste Benutzerdaten (anstatt einer echten Datei)
+            const users = [
+                { id: 1, username: 'cedrik', password: 'pass123' },
+                { id: 2, username: 'ninja', password: 'secret' },
+                { id: 3, username: 'trader', password: 'money' }
+            ];
+
+            let currentUserId = null;
+            // --- ENDE Login-System ---
+
+            // DOM-Elemente
+            const checklist = document.getElementById('rating-checklist');
+            const punkteDisplay = document.getElementById('punkte-display');
+            const setupRatingDisplay = document.getElementById('setup-rating-display');
+            const ratingBar = document.getElementById('rating-bar');
+            const journalForm = document.getElementById('journal-form');
+            const journalEntriesContainer = document.getElementById('journal-entries');
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmBtnYes = document.getElementById('confirm-btn-yes');
+            const confirmBtnNo = document.getElementById('confirm-btn-no');
+            const imageModal = document.getElementById('image-modal');
+            const modalImageContent = document.getElementById('modal-image-content');
+            const closeImageModalBtn = document.getElementById('close-image-modal');
+            const totalTradesDisplay = document.getElementById('total-trades-display');
+            const openTradesDisplay = document.getElementById('open-trades-display');
+            const winTradesDisplay = document.getElementById('win-trades-display');
+            const winrateDisplay = document.getElementById('winrate-display');
+            const paginationControls = document.getElementById('pagination-controls');
+
+            // Anwendungs-Status
+            let journalEntries = []; // Wird nach dem Login geladen
+            let indexToDelete = null;
+            const ITEMS_PER_PAGE = 5;
+            let currentPage = 1;
+            let myStatsChart = null;
+
+            const ratingMap = {
+                0: { grade: 'N/A', color: '#888888' }, 1: { grade: 'B', color: '#ff4d4d' }, 2: { grade: 'B+', color: '#ff9a4d' }, 3: { grade: 'A-', color: '#ffde4d' }, 4: { grade: 'A-', color: '#ffde4d' }, 5: { grade: 'A', color: '#9dff4d' }, 6: { grade: 'A+', color: '#00ff9d' }, 7: { grade: 'A+', color: '#00ff9d' }
+            };
+
+            // --- NEU: Login-Funktionen ---
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                const foundUser = users.find(user => user.username === username && user.password === password);
+
+                if (foundUser) {
+                    currentUserId = foundUser.id;
+                    loginContainer.style.display = 'none';
+                    appContainer.style.display = 'block';
+                    loadUserData();
+                    initializeUI();
+                } else {
+                    loginError.textContent = 'Benutzername oder Passwort falsch.';
+                }
+            });
+
+            logoutBtn.addEventListener('click', () => {
+                currentUserId = null;
+                journalEntries = [];
+                loginContainer.style.display = 'flex';
+                appContainer.style.display = 'none';
+                loginError.textContent = '';
+                document.getElementById('login-form').reset();
+            });
+
+            const loadUserData = () => {
+                const data = localStorage.getItem(`journalEntries_${currentUserId}`);
+                journalEntries = data ? JSON.parse(data) : [];
+            };
+
+            const saveUserData = () => {
+                localStorage.setItem(`journalEntries_${currentUserId}`, JSON.stringify(journalEntries));
+            };
+
+            const initializeUI = () => {
+                updateRating();
+                renderJournalEntries();
+            };
+            // --- ENDE Login-Funktionen ---
+
+            const updateRating = () => {
+                const checkedBoxes = checklist.querySelectorAll('input[type="checkbox"]:checked').length;
+                const rating = ratingMap[checkedBoxes];
+                punkteDisplay.textContent = checkedBoxes;
+                setupRatingDisplay.textContent = rating.grade;
+                setupRatingDisplay.style.color = rating.color;
+                setupRatingDisplay.style.textShadow = `0 0 10px ${rating.color}`;
+                const percentage = (checkedBoxes / 7) * 100;
+                ratingBar.style.width = `${percentage}%`;
+                ratingBar.style.backgroundColor = rating.color;
+            };
+            
+            const calculateAndDisplayStats = () => {
+                const openCount = journalEntries.filter(entry => entry.outcome === 'open').length;
+                const closedTrades = journalEntries.filter(entry => entry.outcome !== 'open');
+                const winCount = closedTrades.filter(entry => entry.outcome === 'Win').length;
+                let winRate = closedTrades.length > 0 ? (winCount / closedTrades.length) * 100 : 0;
+                totalTradesDisplay.textContent = closedTrades.length;
+                openTradesDisplay.textContent = openCount;
+                winTradesDisplay.textContent = winCount;
+                winrateDisplay.textContent = `${winRate.toFixed(1)}%`;
+            };
+
+            const renderStatsChart = () => {
+                const ctx = document.getElementById('stats-chart').getContext('2d');
+                const winCount = journalEntries.filter(e => e.outcome === 'Win').length;
+                const lossCount = journalEntries.filter(e => e.outcome === 'Loss').length;
+                const openCount = journalEntries.filter(e => e.outcome === 'open').length;
+                if (myStatsChart) { myStatsChart.destroy(); }
+                myStatsChart = new Chart(ctx, {
+                    type: 'doughnut', data: { labels: ['Gewinner', 'Verlierer', 'Offen'], datasets: [{ data: [winCount, lossCount, openCount], backgroundColor: ['rgba(0, 255, 157, 0.7)', 'rgba(255, 77, 77, 0.7)', 'rgba(159, 0, 255, 0.7)'], borderColor: '#0d0c1d', borderWidth: 3 }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#e0e0e0', font: { family: "'Rajdhani', sans-serif", size: 14 } } } } }
+                });
+            };
+
+            const renderPaginationControls = () => {
+                paginationControls.innerHTML = '';
+                const totalPages = Math.ceil(journalEntries.length / ITEMS_PER_PAGE);
+                if (totalPages <= 1) return;
+                for (let i = 1; i <= totalPages; i++) {
+                    const button = document.createElement('button');
+                    button.classList.add('pagination-btn');
+                    if (i === currentPage) button.classList.add('active');
+                    button.textContent = i;
+                    button.dataset.page = i;
+                    paginationControls.appendChild(button);
+                }
+            };
+            
+            const renderJournalEntries = () => {
+                calculateAndDisplayStats(); 
+                renderStatsChart();
+                journalEntriesContainer.innerHTML = '';
+                const reversedEntries = [...journalEntries].reverse();
+                const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+                const endIndex = startIndex + ITEMS_PER_PAGE;
+                const paginatedEntries = reversedEntries.slice(startIndex, endIndex);
+
+                 if (paginatedEntries.length === 0 && currentPage > 1) {
+                    currentPage--;
+                    renderJournalEntries();
+                    return;
+                }
+
+                if (journalEntries.length === 0) {
+                    journalEntriesContainer.innerHTML = '<p>Noch keine Einträge vorhanden.</p>';
+                } else {
+                     paginatedEntries.forEach((entry, paginatedIndex) => {
+                        const originalIndex = journalEntries.length - 1 - (startIndex + paginatedIndex);
+                        const entryEl = document.createElement('div');
+                        entryEl.classList.add('journal-entry');
+                        const formattedNotes = entry.notes.replace(/\n/g, '<br>');
+                        let outcomeHtml = '', actionsHtml = '', imageHtml = '';
+                        if (entry.imageUrl) { imageHtml = `<p><strong>Chart:</strong> <button class="btn-view-image" data-index="${originalIndex}">Ansehen</button></p>`; }
+                        if (entry.outcome === 'open') {
+                            entryEl.classList.add('open');
+                            outcomeHtml = `<p><strong>Ergebnis:</strong> <span style="color: var(--secondary-color);">Offen</span></p>`;
+                            actionsHtml = `<div class="entry-outcome-actions"><button class="btn-outcome win" data-index="${originalIndex}" data-outcome="Win">Win</button><button class="btn-outcome loss" data-index="${originalIndex}" data-outcome="Loss">Loss</button></div>`;
+                        } else {
+                            entryEl.style.borderLeftColor = ratingMap[entry.punkte].color;
+                            outcomeHtml = `<p><strong>Ergebnis:</strong> <span class="outcome-tag ${entry.outcome.toLowerCase()}">${entry.outcome}</span></p>`;
+                        }
+                        entryEl.innerHTML = `<div class="entry-details"><p><strong>Asset:</strong> ${entry.asset}</p><p><strong>Richtung:</strong> ${entry.direction}</p>${outcomeHtml}${imageHtml}<p><strong>Datum:</strong> ${entry.date}</p></div><div class="entry-notes"><p>${formattedNotes}</p></div><div class="entry-actions">${actionsHtml}<div class="entry-rating"><div class="grade" style="color: ${entry.outcome === 'open' ? 'var(--text-color)' : ratingMap[entry.punkte].color};">${ratingMap[entry.punkte].grade}</div><div class="points">${entry.punkte} / 7 P.</div></div><button class="btn-delete" data-index="${originalIndex}">Löschen</button></div>`;
+                        journalEntriesContainer.appendChild(entryEl);
+                    });
+                }
+                renderPaginationControls();
+            };
+            
+            checklist.addEventListener('change', updateRating);
+
+            const compressImage = (file) => new Promise((resolve, reject) => {
+                if (!file) return resolve(null);
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1280;
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const compressedDataUrl = ctx.canvas.toDataURL('image/jpeg', 0.07);
+                        resolve(compressedDataUrl);
+                    };
+                    img.onerror = error => reject(error);
+                };
+                reader.onerror = error => reject(error);
+            });
+
+            journalForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const asset = document.getElementById('asset').value;
+                const direction = document.getElementById('direction').value;
+                const notes = document.getElementById('notes').value;
+                const punkte = checklist.querySelectorAll('input[type="checkbox"]:checked').length;
+                const imageFile = document.getElementById('image-upload').files[0];
+                if (!asset) { alert('Bitte gib ein Asset an.'); return; }
+
+                const imageUrl = await compressImage(imageFile);
+
+                // --- NEUE LOGIK: BILDERLIMIT PRÜFEN UND ALTES BILD LÖSCHEN ---
+                if (imageUrl) { // Diese Logik nur ausführen, wenn ein neues Bild hinzugefügt wird
+                    const MAX_IMAGES = 15;
+                    
+                    // Zähle, wie viele Einträge bereits ein Bild haben
+                    const entriesWithImages = journalEntries.filter(entry => entry.imageUrl);
+                    
+                    // Wenn die maximale Anzahl an Bildern erreicht oder überschritten ist
+                    if (entriesWithImages.length >= MAX_IMAGES) {
+                        // Finde den Index des ältesten Eintrags, der ein Bild hat.
+                        // `findIndex` durchsucht das Array von vorne (älteste Einträge) nach hinten.
+                        const oldestImageIndex = journalEntries.findIndex(entry => entry.imageUrl);
+                        
+                        // Wenn ein solcher Eintrag gefunden wurde (sollte immer der Fall sein nach der Längenprüfung)
+                        if (oldestImageIndex !== -1) {
+                            // "Lösche" das Bild, indem die URL entfernt wird.
+                            journalEntries[oldestImageIndex].imageUrl = null;
+                            console.log(`Ältestes Bild von Eintrag (Index: ${oldestImageIndex}) entfernt, um das Limit von ${MAX_IMAGES} Bildern einzuhalten.`);
+                        }
+                    }
+                }
+                // --- ENDE DER NEUEN LOGIK ---
+
+                const newEntry = { asset, direction, outcome: 'open', notes, punkte, imageUrl, date: new Date().toLocaleString('de-DE') };
+                journalEntries.push(newEntry);
+                saveUserData();
+
+                currentPage = 1;
+                renderJournalEntries();
+                journalForm.reset();
+                checklist.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                updateRating();
+            });
+
+            journalEntriesContainer.addEventListener('click', (e) => {
+                const target = e.target;
+                if (target.classList.contains('btn-delete')) {
+                    indexToDelete = parseInt(target.dataset.index, 10);
+                    confirmModal.classList.add('visible');
+                }
+                if (target.classList.contains('btn-outcome')) {
+                    const index = parseInt(target.dataset.index, 10);
+                    journalEntries[index].outcome = target.dataset.outcome;
+                    saveUserData();
+                    renderJournalEntries();
+                }
+                if (target.classList.contains('btn-view-image')) {
+                    const index = parseInt(target.dataset.index, 10);
+                    const entry = journalEntries[index];
+                    if (entry.imageUrl) {
+                        modalImageContent.src = entry.imageUrl;
+                        imageModal.classList.add('visible');
+                    }
+                }
+            });
+
+            paginationControls.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    currentPage = parseInt(e.target.dataset.page, 10);
+                    renderJournalEntries();
+                }
+            });
+
+            const hideConfirmModal = () => { confirmModal.classList.remove('visible'); indexToDelete = null; };
+            const hideImageModal = () => { imageModal.classList.remove('visible'); modalImageContent.src = ''; };
+
+            confirmBtnYes.addEventListener('click', () => {
+                if (indexToDelete !== null) {
+                    journalEntries.splice(indexToDelete, 1);
+                    saveUserData();
+                    renderJournalEntries();
+                }
+                hideConfirmModal();
+            });
+
+            confirmBtnNo.addEventListener('click', hideConfirmModal);
+            confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) hideConfirmModal(); });
+            closeImageModalBtn.addEventListener('click', hideImageModal);
+            imageModal.addEventListener('click', (e) => { if (e.target === imageModal) hideImageModal(); });
+
+        });
+    </script>
+</body>
+</html>
