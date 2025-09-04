@@ -1,0 +1,146 @@
+<!-- Datei: login.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GapNinja - Login</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap');
+        :root {
+            --bg-color: #0d0c1d; --primary-color: #00ff9d; --glass-bg: rgba(16, 18, 27, 0.7);
+            --border-color: rgba(0, 255, 157, 0.2); --text-color: #e0e0e0; --danger-color: #ff4d4d;
+            --shadow-color: rgba(0, 255, 157, 0.5);
+        }
+        body {
+            font-family: 'Rajdhani', sans-serif; background-color: var(--bg-color); color: var(--text-color);
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+            background-image: linear-gradient(rgba(13, 12, 29, 0.95), rgba(13, 12, 29, 0.95)), url('https://www.transparenttextures.com/patterns/cubes.png');
+        }
+        .login-container {
+            width: 400px;
+        }
+        .card {
+            background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 15px;
+            padding: 2.5rem; backdrop-filter: blur(10px); box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+        h1 {
+            text-align: center; font-size: 3rem; font-weight: 700; text-transform: uppercase;
+            color: var(--primary-color); text-shadow: 0 0 15px var(--shadow-color); margin-bottom: 2rem;
+        }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-group input {
+            width: 100%; padding: 0.8rem; background-color: rgba(0,0,0,0.3); border: 1px solid var(--border-color);
+            border-radius: 5px; color: var(--text-color); font-family: 'Rajdhani', sans-serif; font-size: 1rem;
+        }
+        .btn {
+            width: 100%; padding: 1rem; font-size: 1.2rem; font-weight: 600; text-transform: uppercase;
+            color: var(--bg-color); background-color: var(--primary-color); border: none; border-radius: 5px;
+            cursor: pointer; transition: all 0.3s ease; box-shadow: 0 0 15px var(--shadow-color);
+        }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 0 25px var(--shadow-color); }
+        .toggle-form { text-align: center; margin-top: 1.5rem; cursor: pointer; color: var(--primary-color); }
+        #register-form { display: none; }
+        .error-message { color: var(--danger-color); text-align: center; margin-top: 1rem; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>GapNinja</h1>
+        <div class="card">
+            <!-- Login Form -->
+            <form id="login-form">
+                <h2>Login</h2>
+                <div class="form-group">
+                    <label for="login-username">Benutzername</label>
+                    <input type="text" id="login-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Passwort</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn">Einloggen</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form">
+                <h2>Registrieren</h2>
+                <div class="form-group">
+                    <label for="register-username">Benutzername</label>
+                    <input type="text" id="register-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Passwort</label>
+                    <input type="password" id="register-password" required>
+                </div>
+                <button type="submit" class="btn">Account erstellen</button>
+            </form>
+
+            <p class="toggle-form" id="toggle-link">Noch keinen Account? Hier registrieren.</p>
+            <p id="message-area" class="error-message"></p>
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const toggleLink = document.getElementById('toggle-link');
+        const messageArea = document.getElementById('message-area');
+
+        toggleLink.addEventListener('click', () => {
+            if (loginForm.style.display === 'none') {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                toggleLink.textContent = 'Noch keinen Account? Hier registrieren.';
+            } else {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                toggleLink.textContent = 'Bereits einen Account? Hier einloggen.';
+            }
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('register-username').value;
+            const password = document.getElementById('register-password').value;
+
+            const response = await fetch('api/register.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `username=${username}&password=${password}`
+            });
+            const result = await response.json();
+            if (result.success) {
+                messageArea.style.color = 'var(--primary-color)';
+                messageArea.textContent = 'Registrierung erfolgreich! Du kannst dich jetzt einloggen.';
+                registerForm.reset();
+                toggleLink.click(); // Switch back to login form
+            } else {
+                messageArea.style.color = 'var(--danger-color)';
+                messageArea.textContent = result.message;
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            const response = await fetch('api/login.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `username=${username}&password=${password}`
+            });
+            const result = await response.json();
+            if (result.success) {
+                window.location.href = 'index.html'; // Redirect to the main app
+            } else {
+                messageArea.style.color = 'var(--danger-color)';
+                messageArea.textContent = result.message;
+            }
+        });
+    </script>
+</body>
+</html>
